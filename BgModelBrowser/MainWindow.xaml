@@ -1,0 +1,204 @@
+<Window x:Class="BgModelBrowser.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:BgModelBrowser"
+        Title="FFXIV BG Model Browser" Width="1200" Height="800"
+        Background="{StaticResource BgDark}">
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+        </Style>
+        <Style TargetType="Label">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+        </Style>
+        <Style x:Key="CardBorder" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource BgCard}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderColor}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource BgCardHover}"/>
+                    <Setter Property="BorderBrush" Value="{StaticResource AccentColor}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="TabBtn" TargetType="RadioButton">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd" Padding="14,6" CornerRadius="4,4,0,0"
+                                Background="Transparent" Cursor="Hand">
+                            <ContentPresenter HorizontalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#313244"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#2a2a3d"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="GroupName" Value="expansion"/>
+        </Style>
+        <Style x:Key="SubTabBtn" BasedOn="{StaticResource TabBtn}" TargetType="RadioButton">
+            <Setter Property="GroupName" Value="zonetype"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- Top controls -->
+        <StackPanel DockPanel.Dock="Top" Margin="8">
+            <DockPanel Margin="0,0,0,6">
+                <Button DockPanel.Dock="Right" Content="Scan" Padding="16,4" Margin="4,0,0,0"
+                        Click="ScanButton_Click" x:Name="ScanBtn"/>
+                <Button DockPanel.Dock="Right" Content="Browse..." Padding="8,4" Margin="4,0,0,0"
+                        Click="BrowseButton_Click"/>
+                <Label Content="Game Path:" DockPanel.Dock="Left" VerticalAlignment="Center"/>
+                <TextBox x:Name="GamePathBox" VerticalAlignment="Center" Margin="4,0,0,0"/>
+            </DockPanel>
+        </StackPanel>
+
+        <!-- Models / VFX toggle -->
+        <Border x:Name="ModeBar" DockPanel.Dock="Top" Background="#181825" Padding="8,4"
+                BorderBrush="#313244" BorderThickness="0,0,0,1" Visibility="Collapsed">
+            <StackPanel Orientation="Horizontal">
+                <RadioButton x:Name="ModeModels" Content="Models" GroupName="browseMode"
+                             IsChecked="True" Checked="BrowseMode_Changed"
+                             Style="{StaticResource TabBtn}"/>
+                <RadioButton x:Name="ModeVfx" Content="VFX" GroupName="browseMode"
+                             Checked="BrowseMode_Changed"
+                             Style="{StaticResource TabBtn}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Expansion tabs -->
+        <Border x:Name="ExpansionBar" DockPanel.Dock="Top" Background="#181825" Padding="8,2,8,0"
+                Visibility="Collapsed">
+            <StackPanel x:Name="ExpansionTabPanel" Orientation="Horizontal"/>
+        </Border>
+
+        <!-- Zone type sub-tabs (scrollable) -->
+        <Border x:Name="ZoneTypeBar" DockPanel.Dock="Top" Background="#1e1e2e"
+                BorderBrush="#313244" BorderThickness="0,0,0,1" Visibility="Collapsed">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                          Padding="8,0" PreviewMouseWheel="SubTabScroll_MouseWheel">
+                <StackPanel x:Name="ZoneTypeTabPanel" Orientation="Horizontal"/>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Search bar -->
+        <Border x:Name="SearchBar" DockPanel.Dock="Top" Background="#1e1e2e" Padding="8,4,8,6"
+                BorderBrush="#313244" BorderThickness="0,0,0,1" Visibility="Collapsed">
+            <Grid>
+                <TextBox x:Name="SearchBox" TextChanged="SearchBox_TextChanged"
+                         Padding="24,5,8,5" FontSize="13"/>
+                <!-- Search icon -->
+                <TextBlock Text="&#x1F50D;" FontSize="13" IsHitTestVisible="False"
+                           VerticalAlignment="Center" Margin="8,0,0,0"
+                           Foreground="#585b70"/>
+                <!-- Placeholder text -->
+                <TextBlock x:Name="SearchPlaceholder" Text="Search models by name or path..."
+                           IsHitTestVisible="False" VerticalAlignment="Center"
+                           Margin="26,0,0,0" FontSize="13" Foreground="#585b70"
+                           Visibility="{Binding Text, ElementName=SearchBox,
+                               Converter={x:Static local:StringToVisConverter.InverseInstance}}"/>
+            </Grid>
+        </Border>
+
+        <!-- Progress bar -->
+        <ProgressBar DockPanel.Dock="Top" x:Name="ProgressBar" Height="4" Margin="8,0,8,4"
+                     Visibility="Collapsed" Minimum="0" Maximum="100"
+                     Foreground="{StaticResource AccentColor}" Background="#313244"/>
+
+        <!-- Status bar -->
+        <StatusBar DockPanel.Dock="Bottom" Background="#181825">
+            <TextBlock x:Name="StatusText" Text="Ready" Foreground="{StaticResource TextSecondary}"/>
+        </StatusBar>
+
+        <!-- Page controls -->
+        <DockPanel x:Name="PageBar" DockPanel.Dock="Bottom" Margin="8,4" Visibility="Collapsed">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <Button Content="&lt; Prev" Padding="12,4" Click="PrevPage_Click"/>
+                <TextBlock x:Name="PageInfo" Margin="12,0" VerticalAlignment="Center"
+                           Foreground="{StaticResource TextSecondary}"/>
+                <Button Content="Next &gt;" Padding="12,4" Click="NextPage_Click"/>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- Model grid -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      Background="Transparent">
+            <ItemsControl x:Name="ModelGrid">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource CardBorder}" Width="144"
+                                MouseRightButtonUp="Card_RightClick" Tag="{Binding Path}">
+                            <Border.ToolTip>
+                                <TextBlock Text="{Binding Path}" MaxWidth="500" TextWrapping="Wrap"/>
+                            </Border.ToolTip>
+                            <Grid Margin="4">
+                                <StackPanel>
+                                    <Border Background="#11111b" CornerRadius="2" Width="128" Height="128">
+                                        <Image Source="{Binding Thumbnail}" Width="128" Height="128"
+                                               Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding DisplayName}" Margin="0,4,0,0"
+                                               TextTrimming="CharacterEllipsis" FontSize="11"
+                                               Foreground="{StaticResource TextPrimary}"
+                                               HorizontalAlignment="Center"
+                                               Visibility="{Binding DisplayName, Converter={x:Static local:StringToVisConverter.Instance}}"/>
+                                    <TextBlock Text="{Binding FileName}" Margin="0,2,0,0"
+                                               TextTrimming="CharacterEllipsis" FontSize="10"
+                                               Foreground="{StaticResource TextSecondary}"
+                                               HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <!-- Favorite star button -->
+                                <Button Content="{Binding FavoriteStar}" Click="ToggleFavorite_Click"
+                                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Margin="0,-2,-2,0" FontSize="18" Cursor="Hand">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="StarBd" Background="#80111111" CornerRadius="0,4,0,4"
+                                                    Padding="4,1">
+                                                <ContentPresenter/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="StarBd" Property="Background" Value="#C0111111"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Foreground" Value="#80a6adc8"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                                    <Setter Property="Foreground" Value="#f9e2af"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</Window>
